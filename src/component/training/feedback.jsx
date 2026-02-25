@@ -120,7 +120,7 @@ const Feedback = () => {
                     timer: 2000,
                 });
                 resetForm();
-
+                navigate("/feedback");
             } else {
                 Swal.fire("Warning", response.message, "warning");
             }

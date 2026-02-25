@@ -71,7 +71,7 @@ const Requisition = () => {
                     }
                     {Number(item.initiatingOfficer) === Number(empId) &&
                         <button
-                            className="btn btn-sm btn-info"
+                            className="btn btn-sm btn-info me-2"
                             onClick={() => handleFeedbackClick(item)}
                             data-tooltip-id="Tooltip"
                             data-tooltip-content="Feedback"

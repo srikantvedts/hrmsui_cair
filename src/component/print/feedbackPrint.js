@@ -155,7 +155,7 @@ export const FeedbackPrint = (reqData) => {
                 text: [
                     "3. Division : ",
                     {
-                        text: reqData.empDivCode || "",
+                        text: reqData.divisionName || "",
                         decoration: "underline"
                     }
                 ],
@@ -243,6 +243,7 @@ export const FeedbackPrint = (reqData) => {
             {
                 columns: [
                     {
+                        margin: [0, 30, 0, 0],
                         text: [
                             "Date: ",
                             {
@@ -253,14 +254,16 @@ export const FeedbackPrint = (reqData) => {
                     },
                     {
                         text: "Signature of participant",
-                        alignment: "right"
+                        alignment: "right",
+                        margin: [0, 30, 0, 0],
                     }
                 ]
             },
 
             {
                 text: "Note: Report of Evaluation of Effectiveness of Training in the format QSP060:FM04 to be sent to HRT after a trial period of three months on the job by the Division Head/AD.",
-                margin: [0, 20, 0, 0]   // 20pt space above
+                margin: [0, 20, 0, 0],
+                fontSize: 10
             }
         ]
     };
