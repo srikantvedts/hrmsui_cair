@@ -12,6 +12,7 @@ import Feedback from "../component/training/feedback";
 import FeedbackList from "../component/training/feedbackList";
 import Calendar from "../component/training/calendar";
 import AddEditRequisition from "../component/training/addEditRequisition";
+import SignAuthority from "../component/master/signAuthority";
 
 import config from "../environment/config.js"
 import { useState } from 'react';
@@ -120,6 +121,7 @@ function AppRoutes() {
         <Route path="/feedback-add" element={<Feedback />} />
         <Route path="/feedback" element={<FeedbackList />} />
         <Route path="/req-add-edit" element={<AddEditRequisition />} />
+        <Route path="/sign-authority" element={<SignAuthority />} />
       </Routes>
 
     </>

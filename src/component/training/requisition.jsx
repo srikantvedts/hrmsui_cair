@@ -6,8 +6,10 @@ import { getRequisitions } from "../../service/training.service";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
 import { Tooltip } from "react-tooltip";
-import { FaEdit, FaRegEdit } from "react-icons/fa";
 import { MdFeedback } from "react-icons/md";
+import { FaEdit } from "react-icons/fa";
+import RequisitionPrint from "../print/requisition";
+import { FaEye } from "react-icons/fa6";
 
 
 const Requisition = () => {
@@ -38,7 +40,8 @@ const Requisition = () => {
         { name: "Duration", selector: (row) => row.duration, sortable: true, align: 'text-center' },
         { name: "From Date", selector: (row) => row.fromDate, sortable: true, align: 'text-center' },
         { name: "To Date", selector: (row) => row.toDate, sortable: true, align: 'text-center' },
-        { name: "Initiating Officer", selector: (row) => row.initiatingOfficer, sortable: true, align: 'text-center' },
+        { name: "Initiating Officer", selector: (row) => row.initiatingOfficer, sortable: true, align: 'text-left' },
+        { name: "Designation", selector: (row) => row.designation, sortable: true, align: 'text-center' },
         { name: "Action", selector: (row) => row.action, sortable: true, align: 'text-center' },
     ];
 
@@ -51,6 +54,7 @@ const Requisition = () => {
             fromDate: item.fromDate ? format(new Date(item.fromDate), "dd-MM-yyyy") : "-",
             toDate: item.toDate ? format(new Date(item.toDate), "dd-MM-yyyy") : "-",
             initiatingOfficer: item.initiatingOfficerName || "-",
+            designation: item.empDesigName || "-",
             action: (
                 <>
                     <Tooltip id="Tooltip" className='text-white' />
@@ -76,6 +80,15 @@ const Requisition = () => {
                             <MdFeedback className="fs-6 text-white" />
                         </button>
                     }
+                    <button
+                        className="print"
+                        onClick={() => handlePrint(item)}
+                        data-tooltip-id="Tooltip"
+                        data-tooltip-content="Print"
+                        data-tooltip-place="top"
+                    >
+                        <FaEye className="fs-6" />
+                    </button>
                 </>
             )
         }));
@@ -94,6 +107,10 @@ const Requisition = () => {
         navigate("/feedback-add", { state: item });
 
     }
+    const handlePrint = async (letter) => {
+        await RequisitionPrint(letter);
+    };
+
 
     return (
         <div>
