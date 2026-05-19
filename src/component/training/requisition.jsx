@@ -232,38 +232,61 @@ const Requisition = () => {
                 if (Number(item.initiatingOfficer) !== Number(empId)) return;
 
                 const feedbackExists = feedbackList?.some(
-                    feedback => Number(feedback?.requisitionId) === Number(item?.requisitionId)
+                    feedback =>
+                        Number(feedback?.requisitionId) ===
+                        Number(item?.requisitionId)
                 );
 
                 if (!feedbackExists) {
-                    feedbackMissing.push(item.requisitionNumber);
+                    feedbackMissing.push(item.courseName);
                 }
             });
 
         if (feedbackMissing.length > 0) {
             Swal.fire({
-                title: "Action Required",
+                title: "Feedback Submission Required",
                 icon: "info",
                 html: `
                 <div style="text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6;">
-                    <p style="color: #555;">To proceed, please submit feedback for all your approved requisitions listed below.</p>
-                    ${feedbackMissing.length > 0 ? `
-                        <div style="margin-top: 15px; border-left: 4px solid #3498db; padding-left: 10px;">
-                            <strong style="color: #2980b9;">Feedback Required</strong>
-                            <p style="font-size: 0.85rem; margin: 0; color: #666;">Please submit feedback for these approved requisitions:</p>
-                            <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 5px;">
-                                ${feedbackMissing.map(req => `<span style="background: #ebf5fb; border: 1px solid #3498db; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${req}</span>`).join("")}
-                            </div>
+                    
+                    <p style="color: #555; margin-bottom: 12px;">
+                        You cannot proceed with a new requisition until feedback is submitted for all previously approved courses.
+                    </p>
+
+                    <div style="margin-top: 15px; border-left: 4px solid #3498db; padding-left: 12px;">
+                        <strong style="color: #2980b9; font-size: 15px;">
+                            Pending Feedback Courses
+                        </strong>
+
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            ${feedbackMissing
+                        .map(
+                            req => `
+                                    <span 
+                                        style="
+                                            background: #ebf5fb;
+                                            border: 1px solid #3498db;
+                                            color: #21618c;
+                                            padding: 4px 10px;
+                                            border-radius: 4px;
+                                            font-size: 12px;
+                                        "
+                                    >
+                                        ${req}
+                                    </span>
+                                `
+                        )
+                        .join("")}
                         </div>
-                    ` : ""}
+                    </div>
                 </div>
             `,
                 showCloseButton: true,
                 confirmButtonText: "OK",
                 confirmButtonColor: "#3085d6",
                 customClass: {
-                    container: 'my-swal-container'
-                }
+                    container: "my-swal-container",
+                },
             });
 
             return;
@@ -370,8 +393,8 @@ const Requisition = () => {
                         type="button"
                         onClick={() => handleChangeTab("free")}
                         className={`btn rounded-pill px-4 py-2 d-flex align-items-center gap-2 transition-all ${selectedTab === "free"
-                                ? "btn-warning border-0 shadow"
-                                : "btn-light border-0 text-secondary"
+                            ? "btn-warning border-0 shadow"
+                            : "btn-light border-0 text-secondary"
                             }`}
                     >
                         <span className="fw-bold">Free Requisition</span>
@@ -385,8 +408,8 @@ const Requisition = () => {
                         type="button"
                         onClick={() => handleChangeTab("paid")}
                         className={`btn rounded-pill px-4 py-2 d-flex align-items-center gap-2 transition-all ${selectedTab === "paid"
-                                ? "btn-success border-0 shadow text-white"
-                                : "btn-light border-0 text-secondary"
+                            ? "btn-success border-0 shadow text-white"
+                            : "btn-light border-0 text-secondary"
                             }`}
                     >
                         <span className="fw-bold">Paid Requisition</span>
@@ -397,7 +420,7 @@ const Requisition = () => {
 
                 </div>
             </div>
-            
+
             <div id="card-body" className="p-2 mt-2">
                 {<Datatable columns={columns} data={mappedData()} />}
             </div>

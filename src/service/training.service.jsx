@@ -726,3 +726,12 @@ export const getMandatoryTrainingByEmpId = async (id) => {
         throw error;
     }
 };
+
+export const acceptMandatoryTraining = async (data) => {
+    try {
+        return (await axios.post(`${API_URL}api/training/accept-training`, data, { headers: { 'Content-Type': 'application/json', ...authHeader() } })).data;
+    } catch (error) {
+        console.error('Error occurred in acceptMandatoryTraining():', error);
+        throw error;
+    }
+};

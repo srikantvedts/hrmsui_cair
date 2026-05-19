@@ -247,24 +247,4 @@ export const REPORT_CONFIGS = {
     fetchUrl: "training-scst",
   },
 
-  "14": {
-    fileName: "Mandatory Training Report",
-    columns: [
-      { name: "SN", selector: (row) => row.sn, sortable: false, align: 'text-center' },
-      { name: "PIS No", selector: (row) => row.empNo, sortable: true, align: 'text-center' },
-      { name: "Cadre", selector: (row) => row.desigCadre, sortable: true, align: 'text-center' },
-      { name: "Employee Name", selector: (row) => row.participantName, sortable: true, align: 'text-left', width: "18%" },
-      { name: "Designation", selector: (row) => row.empDesigName, sortable: true, align: 'text-center' },
-      { name: "Division/Group", selector: (row) => row.empDivCode, sortable: true, align: 'text-center' },
-      { name: "Title of the Course", selector: (row) => row.courseName, sortable: true, align: 'text-left', width: "15%" },
-      { name: "Course Type", selector: (row) => row.courseType, sortable: true, align: 'text-center' },
-      { name: "Organizing Agency", selector: (row) => row.organizer, sortable: true, align: 'text-center' },
-      { name: "City", selector: (row) => row.venue, sortable: true, align: 'text-center' },
-      { name: "Period (In days)", selector: (row) => row.duration, sortable: true, align: 'text-center' },
-      { name: "Remarks", selector: (row) => row.remarks, sortable: true, align: 'text-left' },
-      { name: "Registration Fee (Rs.)", selector: (row) => formatIndianRupee(row.registrationFee), sortable: true, align: 'text-end' },
-    ],
-    fetchUrl: "mandatory-training",
-  },
-
 };

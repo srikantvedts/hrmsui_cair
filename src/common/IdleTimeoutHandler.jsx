@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { logout } from "../service/auth.service";
 
-
 function IdleTimeoutHandler({ timeout, warningTime, children }) {
     const location = useLocation();
     const navigate = useNavigate();
@@ -40,19 +39,18 @@ function IdleTimeoutHandler({ timeout, warningTime, children }) {
         localStorage.clear();
         sessionStorage.clear();
 
-        if (isManual) {
-            // User clicked "Logout Now", just take them to login immediately
-            navigate("/login", { replace: true });
-        } else {
-            // System logged them out automatically, show the reason why
+        // FIX: Navigate immediately so private routes unmount and don't break
+        navigate("/login", { replace: true });
+
+        if (!isManual) {
+            // The system logged them out automatically. 
+            // This now pops up on top of the login page cleanly.
             Swal.fire({
                 icon: "warning",
                 title: "Session Expired",
                 text: "You have been logged out due to inactivity",
                 confirmButtonText: "Ok",
                 allowOutsideClick: false
-            }).then(() => {
-                navigate("/login", { replace: true });
             });
         }
     }, [navigate]);
@@ -82,14 +80,13 @@ function IdleTimeoutHandler({ timeout, warningTime, children }) {
                     if (b) b.textContent = countdown;
 
                     if (countdown <= 0) {
-                        // Triggers the auto-logout path (isManual = false)
+                        clearInterval(timerInterval);
                         Swal.close();
                         handleLogout(false);
                     }
                 }, 1000);
             },
             willClose: () => {
-                // Kill the countdown interval no matter how the modal closes
                 clearInterval(timerInterval);
             }
         }).then((result) => {
@@ -99,8 +96,7 @@ function IdleTimeoutHandler({ timeout, warningTime, children }) {
                 // User clicked "Stay Logged In"
                 startTimer();
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-                // 1. User clicked "Logout Now"
-                // 2. We call handleLogout(true) for a clean, immediate exit
+                // User clicked "Logout Now"
                 handleLogout(true);
             }
         });
@@ -129,13 +125,15 @@ function IdleTimeoutHandler({ timeout, warningTime, children }) {
         }
 
         const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
-        events.forEach((event) => window.addEventListener(event, resetTimer));
+        const registerEvents = () => events.forEach((e) => window.addEventListener(e, resetTimer));
+        const unregisterEvents = () => events.forEach((e) => window.removeEventListener(e, resetTimer));
 
+        registerEvents();
         startTimer();
 
         return () => {
             clearTimer();
-            events.forEach((event) => window.removeEventListener(event, resetTimer));
+            unregisterEvents();
         };
     }, [resetTimer, startTimer, isPublic]);
 

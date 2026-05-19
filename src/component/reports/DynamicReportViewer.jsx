@@ -24,7 +24,7 @@ const DynamicReportViewer = ({ reportId, fromDate, toDate }) => {
       try {
         let url = config.fetchUrl;
 
-        if (["2","3","4","5","6","7","8","10","11","14"].includes(reportId) && formatFromDate && formatToDate) {
+        if (["2","3","4","5","6","7","8","10","11"].includes(reportId) && formatFromDate && formatToDate) {
           url = `${url}?fromDate=${formatFromDate}&toDate=${formatToDate}`;
         }
         const response = await getReportData(url);

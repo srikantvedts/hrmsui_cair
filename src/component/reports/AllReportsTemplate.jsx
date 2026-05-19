@@ -21,7 +21,6 @@ const REPORTS_LIST = [
     { id: "11", name: "Budget Expenditure" },
     { id: "12", name: "Gender Budgeting" },
     { id: "13", name: "Training of SC/ST Employees" },
-    { id: "14", name: "Mandatory Training Report" },
 ];
 
 const today = new Date();
@@ -111,7 +110,7 @@ const AllReportsTemplate = () => {
                                     </h3>
 
                                     {/* Right Side Date Pickers */}
-                                    {["2","3","4","5","6","7","8","10","11","14"].includes(activeReport) && (
+                                    {["2","3","4","5","6","7","8","10","11"].includes(activeReport) && (
                                         <div className="d-flex align-items-center gap-2">
 
                                             <DatePicker

@@ -36,6 +36,7 @@ import Journal from "../component/training/journal.jsx";
 import MandatoryTraining from "../component/training/mandatoryTraining.jsx";
 import MandatoryTrainingAddEdit from "../component/training/mandatoryTrainingAddEdit.jsx";
 import LicenseExp from "../component/license/licenseExp.component.jsx";
+import ChangePassword from "../component/admin/changePassword.jsx";
 
 
 function AppRoutes() {
@@ -56,12 +57,12 @@ function AppRoutes() {
     const handleMessage = async (event) => {
       // 1. Security check
       const URLs = config.URLs;
-      console.log("event.origin",event.origin)
+      console.log("event.origin", event.origin)
       if (!URLs.includes(event.origin)) return;
 
       if (event.data.user) {
 
-        console.log(event.data.user.username,"event.data.user.username")
+        console.log(event.data.user.username, "event.data.user.username")
         // 2. Clear everything to prevent User A's data from hanging around
         localStorage.clear();
         localStorage.setItem("user", JSON.stringify(event.data.user));
@@ -160,6 +161,7 @@ function AppRoutes() {
         <Route path="/mandatory-training" element={<MandatoryTraining />} />
         <Route path="/mandatory-training-add" element={<MandatoryTrainingAddEdit />} />
         <Route path='/license-exp' element={<LicenseExp />} />
+        <Route path="/password-change" element={<ChangePassword />} />
       </Routes>
 
     </>

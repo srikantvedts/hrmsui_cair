@@ -1,14 +1,15 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../navbar/Navbar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import AlertConfirmation from "../../common/AlertConfirmation.component";
-import { addMandatoryTrainingData, editMandatoryTrainingData, getMandatoryTrainingByEmpId, getMandatoryTrainingDataById } from "../../service/training.service";
+import { addRequisitionData, getAgencies, getCourseList, getMandatoryTrainingByEmpId, getRequisitionById, updateRequisitionData } from "../../service/training.service";
 import { getEmployees, handleApiError } from "../../service/master.service";
 import Swal from "sweetalert2";
 import Select from "react-select";
+import CourseModal from "../master/courseModal";
 import { format } from "date-fns";
 
 
@@ -16,17 +17,22 @@ const MandatoryTrainingAddEdit = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
-    const mandatoryTrainingId = location.state?.mandatoryTrainingId;
+    const requisitionId = location.state?.requisitionId;
     const [editData, setEditData] = useState(null);
     const [employeeList, setEmployeeList] = useState([]);
+    const [courseList, setCourseList] = useState([]);
+    const [organizerList, setOrganizerList] = useState([]);
+    const formikRef = useRef(null);
+    const [showCourseModal, setShowCourseModal] = useState(false);
+    const [feeOptions, setFeeOptions] = useState([]);
+    const [courseData, setCourseData] = useState(null);
 
     const roleName = localStorage.getItem("roleName");
     const empId = localStorage.getItem("empId");
 
     const [initialValues, setInitialValues] = useState({
-        mandatoryTrainingId: null,
-        participantId: empId,
-        courseName: "",
+        initiatingOfficer: empId,
+        courseId: "",
         courseType: "",
         organizer: "",
         duration: "",
@@ -35,18 +41,18 @@ const MandatoryTrainingAddEdit = () => {
         reference: "",
         venue: "",
         registrationFee: "",
-        remarks: ""
+        remarks: "",
     });
 
     useEffect(() => {
-        if (mandatoryTrainingId) {
-            fetchMandatoryTrainingData(mandatoryTrainingId);
+        if (requisitionId) {
+            fetchMandatoryTrainingData(requisitionId);
         }
-    }, [mandatoryTrainingId]);
+    }, [requisitionId]);
 
     const fetchMandatoryTrainingData = async (trainId) => {
         try {
-            const response = await getMandatoryTrainingDataById(trainId);
+            const response = await getRequisitionById(trainId);
             setEditData(response?.data);
         } catch (error) {
             console.error("Error fetching mandatory training data:", error);
@@ -55,6 +61,8 @@ const MandatoryTrainingAddEdit = () => {
 
     useEffect(() => {
         fetchEmployees();
+        fetchPrograms();
+        fetchAgencies();
     }, []);
 
     const fetchEmployees = async () => {
@@ -66,12 +74,33 @@ const MandatoryTrainingAddEdit = () => {
         }
     };
 
+    const fetchAgencies = async () => {
+        try {
+            const response = await getAgencies();
+            setOrganizerList(response?.data || []);
+        } catch (error) {
+            console.error("Error fetching agencies:", error);
+            Swal.fire("Error", "Failed to fetch organizer data. Please try again later.", "error");
+        }
+    };
+
+    const fetchPrograms = async () => {
+        try {
+            const response = await getCourseList(0);
+            setCourseList(response?.data || []);
+        } catch (error) {
+            console.error("Error fetching programs:", error);
+            Swal.fire("Error", "Failed to fetch program data. Please try again later.", "error");
+        }
+    };
+
     useEffect(() => {
         if (editData && Object.keys(editData).length > 0) {
             setInitialValues({
-                mandatoryTrainingId: editData.mandatoryTrainingId,
-                participantId: editData.participantId,
-                courseName: editData.courseName,
+                requisitionId: editData.requisitionId,
+                requisitionNumber: editData.requisitionNumber,
+                initiatingOfficer: editData.initiatingOfficer,
+                courseId: editData.courseId,
                 courseType: editData.courseType,
                 organizer: editData.organizer,
                 duration: editData.duration,
@@ -80,19 +109,14 @@ const MandatoryTrainingAddEdit = () => {
                 reference: editData.reference,
                 venue: editData.venue,
                 registrationFee: editData.registrationFee,
-                remarks: editData.remarks
+                remarks: editData.necessity,
             });
         }
     }, [editData]);
 
     const validationSchema = Yup.object().shape({
-        mandatoryTrainingId: Yup.number().notRequired(),
-        participantId: Yup.number().required("Participant is required"),
-        courseName: Yup.string()
-            .trim()
-            .required("Course name is required")
-            .min(3, "Course name must be at least 3 characters")
-            .max(100, "Course name cannot exceed 100 characters"),
+        initiatingOfficer: Yup.number().required("Participant is required"),
+        courseId: Yup.string().required("Course is required"),
 
         courseType: Yup.string()
             .trim()
@@ -147,6 +171,24 @@ const MandatoryTrainingAddEdit = () => {
 
     const handleSubmit = async (values, { resetForm }) => {
         try {
+
+            const hasConflict = await checkTrainingConflict(values.fromDate, values.toDate, values, editData);
+            if (hasConflict) return;
+
+            const dto = {
+                ...values,
+                requisitionId: requisitionId || null,
+                requisitionNumber: values.requisitionNumber || null,
+                fromDate: format(new Date(values.fromDate), "yyyy-MM-dd"),
+                toDate: format(new Date(values.toDate), "yyyy-MM-dd"),
+                isMandatory: "Y",
+                journalId: 0,
+                modeOfPayment: "OTHERS",
+                necessity: values.remarks || "",
+                isSubmitted: "N",
+                isPaperPresent: "N",
+            };
+
             const confirm = await AlertConfirmation({
                 title: "Are you sure to submit!",
                 message: "",
@@ -154,7 +196,7 @@ const MandatoryTrainingAddEdit = () => {
 
             if (!confirm) return;
 
-            const response = mandatoryTrainingId ? await editMandatoryTrainingData(values) : await addMandatoryTrainingData(values);
+            const response = requisitionId ? await updateRequisitionData(dto) : await addRequisitionData(dto);
 
             if (response && response.success) {
                 Swal.fire({
@@ -199,38 +241,57 @@ const MandatoryTrainingAddEdit = () => {
     }));
 
 
-    const checkTrainingConflict = async (startDate, endDate, values, setFieldValue) => {
-        if (!startDate || !endDate || !values.participantId) return false;
+    const checkTrainingConflict = async (startDate, endDate, values, editData) => {
+        if (!startDate || !endDate || !values.initiatingOfficer) return false;
 
         const newFrom = new Date(startDate);
         const newTo = new Date(endDate);
 
         try {
-            const response = await getMandatoryTrainingByEmpId(values.participantId);
+            const response = await getMandatoryTrainingByEmpId(values.initiatingOfficer);
             const trainings = response?.data || [];
 
-            const conflictRecord = trainings.find(item => {
-                if (Number(item.participantId) !== Number(values.participantId)) return false;
+            const conflictRecords = trainings.filter(item => {
+
+                // Skip same record in edit mode (VERY IMPORTANT FIX)
+                if (editData && item.requisitionId === editData.requisitionId) {
+                    return false;
+                }
 
                 const existingFrom = new Date(item.fromDate);
                 const existingTo = new Date(item.toDate);
 
-                // Standard overlap formula: (StartA <= EndB) and (EndA >= StartB)
+                // console.log("Checking:", {
+                //     existingFrom: format(existingFrom, "yyyy-MM-dd"),
+                //     existingTo: format(existingTo, "yyyy-MM-dd"),
+                //     newFrom: format(newFrom, "yyyy-MM-dd"),
+                //     newTo: format(newTo, "yyyy-MM-dd"),
+                // });
+
+                // Overlap condition
                 return newFrom <= existingTo && newTo >= existingFrom;
             });
 
-            if (conflictRecord) {
+            // If multiple conflicts found
+            if (conflictRecords.length > 0) {
+                const conflictHtml = conflictRecords.map(record => `
+                            <div style="margin-bottom:8px; background:#fff3cd; padding:8px; border-radius:6px; border-left:4px solid #ffc107;">
+                                <b>${record.courseName}</b><br/>
+                                ${format(new Date(record.fromDate), "dd-MM-yyyy")} 
+                                to 
+                                ${format(new Date(record.toDate), "dd-MM-yyyy")}
+                            </div>
+                        `).join("");
+
                 Swal.fire({
                     icon: "warning",
-                    title: "⚠ Training Conflict",
+                    title: "⚠ Training Conflict Found",
                     html: `
-                    <div style="text-align:left; font-size:14px">
-                        <p>This employee is already scheduled for <b>${conflictRecord.courseName}</b> during this period:</p>
-                        <div style="background:#fff3cd; padding:8px; border-radius:6px; border-left:4px solid #ffc107;">
-                            ${format(new Date(conflictRecord.fromDate), "dd-MM-yyyy")} to ${format(new Date(conflictRecord.toDate), "dd-MM-yyyy")}
-                        </div>
-                    </div>
-                `,
+                                <div style="text-align:left; font-size:14px">
+                                    <p>This employee is already scheduled for the following training(s):</p>
+                                    ${conflictHtml}
+                                </div>
+                            `,
                     confirmButtonColor: "#f57c00",
                 });
                 return true;
@@ -238,55 +299,93 @@ const MandatoryTrainingAddEdit = () => {
             return false;
         } catch (error) {
             console.error("Error checking training conflict:", error);
-            // Optional: Show an alert if the API fails
             return false;
         }
     };
 
-    const handleFromDateChange = async (date, values, setFieldValue) => {
-        setFieldValue("fromDate", date);
 
-        // If toDate already exists, check for a conflict with the new range
-        if (values.toDate) {
-            const isConflict = await checkTrainingConflict(date, values.toDate, values, setFieldValue);
-            if (isConflict) {
-                setFieldValue("fromDate", null);
-                setFieldValue("duration", "");
-            } else {
-                calculateDuration(date, values.toDate, setFieldValue);
+    const courseOptions = [
+        { value: 0, label: "Add New", data: null },
+        ...courseList.map((item) => ({
+            value: item.courseId,
+            label: item.courseName,
+            data: item
+        }))
+    ];
+
+    useEffect(() => {
+        if (courseData && courseList.length > 0 && formikRef.current) {
+            const selectedProgram = courseList.find(
+                item => item.courseId === courseData.courseId
+            );
+            if (selectedProgram) {
+                handleChaneProgram({
+                    value: selectedProgram.courseId,
+                    label: selectedProgram.courseName,
+                    data: selectedProgram
+                });
+                setCourseData(null);
             }
         }
-    };
+    }, [courseList, courseData]);
 
-    const handleToDateChange = async (date, values, setFieldValue) => {
-        if (!values.fromDate) {
-            Swal.fire({ icon: "warning", title: "Select From Date First" });
+
+    const handleChaneProgram = (selected) => {
+
+        const { setFieldValue } = formikRef.current;
+
+        if (!selected) return;
+
+        // If Add New clicked
+        if (selected.value === 0) {
+            setShowCourseModal(true);
             return;
         }
 
-        if (new Date(date) < new Date(values.fromDate)) {
-            Swal.fire({ icon: "error", title: "To Date cannot be earlier than From Date" });
-            return;
-        }
+        const courseData = selected.data;
+        if (!courseData) return;
 
-        const isConflict = await checkTrainingConflict(values.fromDate, date, values, setFieldValue);
+        const newOrgData = organizerList.find(
+            item => item.organizerId === courseData.organizerId
+        );
 
-        if (isConflict) {
-            setFieldValue("toDate", null);
-            setFieldValue("duration", "");
-        } else {
-            setFieldValue("toDate", date);
-            calculateDuration(values.fromDate, date, setFieldValue);
+        const fromDate = new Date(courseData.fromDate);
+        const toDate = new Date(courseData.toDate);
+
+        setFieldValue("courseId", selected.value);
+        setFieldValue("fromDate", fromDate);
+        setFieldValue("toDate", toDate);
+        setFieldValue("organizer", newOrgData ? newOrgData.organizer : "");
+        setFieldValue("courseType", courseData ? courseData.courseType : "");
+        setFieldValue("venue", courseData ? courseData.venue : "");
+        setFieldValue("registrationFee", courseData ? courseData.offlineRegistrationFee : 0);
+        setFieldValue("onlineRegistrationFee", courseData ? courseData.onlineRegistrationFee : 0);
+        setFieldValue("reference", newOrgData ? `${newOrgData.organizer} - Calendar` : "");
+
+        calculateDuration(fromDate, toDate, setFieldValue);
+
+        const fees = [];
+        if (courseData.offlineRegistrationFee > 0) {
+            fees.push({
+                value: courseData.offlineRegistrationFee,
+                label: `Offline - ₹${courseData.offlineRegistrationFee}`,
+            });
         }
+        if (courseData.onlineRegistrationFee > 0) {
+            fees.push({
+                value: courseData.onlineRegistrationFee,
+                label: `Online - ₹${courseData.onlineRegistrationFee}`,
+            });
+        }
+        setFeeOptions(fees);
     };
-
 
     return (
         <div>
             <Navbar />
 
             <h3 className="fancy-heading mt-4">
-                {mandatoryTrainingId ? "Edit Mandatory Training" : "Add  Mandatory Training"}
+                {requisitionId ? "Edit Mandatory Training" : "Add  Mandatory Training"}
                 <span className="underline-glow">
                     <span className="pulse-dot"></span>
                     <span className="pulse-dot"></span>
@@ -297,6 +396,7 @@ const MandatoryTrainingAddEdit = () => {
             <div className="p-5">
                 <div className="card p-3 shadow-sm border-rounded">
                     <Formik
+                        innerRef={formikRef}
                         initialValues={initialValues}
                         validationSchema={validationSchema}
                         enableReinitialize
@@ -307,39 +407,47 @@ const MandatoryTrainingAddEdit = () => {
                                 <div className="row g-3 custom-modal-body p-3">
 
 
-                                    <div className="col-md-3">
+                                    <div className="col-md-4">
                                         <label className="form-label">Participant
                                             <span className="text-danger">*</span>
                                         </label>
                                         <Select
                                             options={employeeOptions}
                                             value={employeeOptions.find(
-                                                (option) => option.value === Number(values.participantId)
+                                                (option) => option.value === Number(values.initiatingOfficer)
                                             ) || null}
                                             onChange={(selectedOption) => {
-                                                setFieldValue("participantId", selectedOption?.value || null);
+                                                setFieldValue("initiatingOfficer", selectedOption?.value || null);
                                             }}
                                             placeholder="Select Participant"
                                             isSearchable
                                             isClearable
                                         />
-                                        <ErrorMessage name="participantId" component="div" className="text-danger small" />
+                                        <ErrorMessage name="initiatingOfficer" component="div" className="text-danger small" />
                                     </div>
 
 
-                                    <div className="col-md-5">
+                                    <div className="col-md-4">
                                         <label className="form-label">Name of the Course
                                             <span className="text-danger">*</span>
                                         </label>
-                                        <Field name="courseName" type="text" className="form-control" />
-                                        <ErrorMessage name="courseName" component="div" className="invalid-msg" />
+                                        <div className="text-start">
+                                            <Select
+                                                options={courseOptions}
+                                                value={courseOptions.find((item) => item.value === values.courseId) || null}
+                                                placeholder="Select Course"
+                                                isSearchable
+                                                onChange={(selected) => handleChaneProgram(selected)}
+                                            />
+                                        </div>
+                                        <ErrorMessage name="courseId" component="div" className="invalid-msg" />
                                     </div>
 
                                     <div className="col-md-2">
                                         <label className="form-label">Course Type
                                             <span className="text-danger">*</span>
                                         </label>
-                                        <Field name="courseType" type="text" className="form-control" />
+                                        <Field name="courseType" type="text" className="form-control" disabled />
                                         <ErrorMessage name="courseType" component="div" className="invalid-msg" />
                                     </div>
 
@@ -347,7 +455,7 @@ const MandatoryTrainingAddEdit = () => {
                                         <label className="form-label">Organized By
                                             <span className="text-danger">*</span>
                                         </label>
-                                        <Field name="organizer" type="text" className="form-control" />
+                                        <Field name="organizer" type="text" className="form-control" disabled />
                                         <ErrorMessage name="organizer" component="div" className="invalid-msg" />
                                     </div>
 
@@ -359,7 +467,10 @@ const MandatoryTrainingAddEdit = () => {
                                             id="fromDate"
                                             name="fromDate"
                                             selected={values.fromDate}
-                                            onChange={(date) => handleFromDateChange(date, values, setFieldValue)}
+                                            onChange={(date) => {
+                                                setFieldValue("fromDate", date);
+                                                calculateDuration(date, values.toDate, setFieldValue);
+                                            }}
                                             className="form-control"
                                             placeholderText="Choose Date"
                                             dateFormat="dd-MM-yyyy"
@@ -379,13 +490,17 @@ const MandatoryTrainingAddEdit = () => {
                                             id="toDate"
                                             name="toDate"
                                             selected={values.toDate}
-                                            onChange={(date) => handleToDateChange(date, values, setFieldValue)}
+                                            onChange={(date) => {
+                                                setFieldValue("toDate", date);
+                                                calculateDuration(values.fromDate, date, setFieldValue);
+                                            }}
                                             className="form-control"
                                             placeholderText="Choose Date"
                                             dateFormat="dd-MM-yyyy"
                                             showYearDropdown
                                             showMonthDropdown
                                             dropdownMode="select"
+                                            minDate={values.fromDate || null}
                                             onKeyDown={(event) => event.preventDefault()}
                                         />
                                         <ErrorMessage name="toDate" component="div" className="text-danger small" />
@@ -401,17 +516,41 @@ const MandatoryTrainingAddEdit = () => {
 
 
                                     <div className="col-md-2">
-                                        <label className="form-label">Registration Fee (₹)
-                                            <span className="text-danger">*</span>
-                                        </label>
-                                        <Field
-                                            name="registrationFee"
-                                            type="number"
-                                            className="form-control"
-                                        />
+                                        <label className="form-label">Registration Fee (₹)</label>
+
+                                        {values.registrationFee === 0 ? (
+
+                                            <Field
+                                                name="registrationFee"
+                                                type="number"
+                                                className="form-control"
+                                                disabled
+                                            />
+
+                                        ) : feeOptions.length > 1 ? (
+
+                                            <Select
+                                                options={feeOptions}
+                                                value={feeOptions.find(fee => fee.value === values.registrationFee) || null}
+                                                placeholder="Select Fee Type"
+                                                onChange={(selected) => {
+                                                    setFieldValue("registrationFee", selected ? selected.value : 0);
+                                                }}
+                                            />
+
+                                        ) : (
+
+                                            <Field
+                                                name="registrationFee"
+                                                type="number"
+                                                className="form-control"
+                                                disabled
+                                            />
+
+                                        )}
+
                                         <ErrorMessage name="registrationFee" component="div" className="invalid-msg" />
                                     </div>
-
 
                                     <div className="col-md-3">
                                         <label className="form-label">Venue
@@ -428,9 +567,9 @@ const MandatoryTrainingAddEdit = () => {
                                     </div>
 
 
-                                    <div className="col-md-7">
+                                    <div className="col-md-12">
                                         <label className="form-label">Remarks</label>
-                                        <Field name="remarks" type="text" className="form-control" />
+                                        <Field name="remarks" as="textarea" rows={3} className="form-control" />
                                         <ErrorMessage name="remarks" component="div" className="invalid-msg" />
                                     </div>
 
@@ -438,9 +577,9 @@ const MandatoryTrainingAddEdit = () => {
 
                                 <div className="text-center mt-4">
                                     <button type="submit"
-                                        className={mandatoryTrainingId ? `update` : `submit`}
+                                        className={requisitionId ? `update` : `submit`}
                                     >
-                                        {mandatoryTrainingId ? `update` : `submit`}
+                                        {requisitionId ? `update` : `submit`}
                                     </button>
                                     <button
                                         type="button"
@@ -457,6 +596,15 @@ const MandatoryTrainingAddEdit = () => {
                 </div>
 
             </div>
+
+            {showCourseModal && (
+                <CourseModal
+                    showProgramModal={showCourseModal}
+                    setShowProgramModal={setShowCourseModal}
+                    setCourseData={setCourseData}
+                    fetchPrograms={fetchPrograms}
+                />
+            )}
 
         </div>
     )
